@@ -131,7 +131,6 @@ class BasicBot:
             self.logger.error(f"Failed to get order status: {str(e)}")
             return None
 
-
     def place_stop_limit_order(self, symbol, side, quantity, stop_price, limit_price):
         """Place a stop-limit order"""
         try:
@@ -168,6 +167,50 @@ class BasicBot:
 
         except BinanceAPIException as e:
             self.logger.error(f"Failed to place stop-limit order: {str(e)}")
+            return None
+
+    # Add to BasicBot class in bot.py
+
+    def get_portfolio_summary(self):
+        """Get detailed portfolio summary"""
+        try:
+            # Get account info
+            account = self.client.futures_account()
+            balance = self.client.futures_account_balance()
+
+            # Get positions
+            positions = self.client.futures_position_information()
+
+            portfolio = {
+                'total_wallet_balance': float(account['totalWalletBalance']),
+                'total_unrealized_pnl': float(account['totalUnrealizedPnL']),
+                'available_balance': float(account['availableBalance']),
+                'balances': {},
+                'positions': []
+            }
+
+            # Process balances
+            for asset in balance:
+                if float(asset['balance']) > 0:
+                    portfolio['balances'][asset['asset']] = float(asset['balance'])
+
+            # Process positions
+            for position in positions:
+                if float(position['positionAmt']) != 0:
+                    portfolio['positions'].append({
+                        'symbol': position['symbol'],
+                        'size': float(position['positionAmt']),
+                        'entry_price': float(position['entryPrice']),
+                        'mark_price': float(position['markPrice']),
+                        'pnl': float(position['unRealizedPnL']),
+                        'percentage': float(position['percentage'])
+                    })
+
+            self.logger.info("Retrieved portfolio summary")
+            return portfolio
+
+        except BinanceAPIException as e:
+            self.logger.error(f"Failed to get portfolio summary: {str(e)}")
             return None
 
 

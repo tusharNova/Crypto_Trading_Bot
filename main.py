@@ -8,16 +8,18 @@ class TradingCLI:
         self.logger = setup_logger()
 
     def display_menu(self):
+        """Display main menu"""
         print("\n" + "=" * 50)
         print("🚀 CRYPTO TRADING BOT - TESTNET")
         print("=" * 50)
         print("1. 💰 View Account Balance")
-        print("2. 📊 Get Symbol Price")
-        print("3. 🛒 Place Market Order (Buy/Sell)")
-        print("4. 📈 Place Limit Order (Buy/Sell)")
-        print("5. 🛡️  Place Stop-Limit Order (Advanced)")
-        print("6. 🔍 Check Order Status")
-        print("7. ❌ Exit")
+        print("2. 📊 Portfolio Summary (Detailed)")
+        print("3. 📊 Get Symbol Price")
+        print("4. 🛒 Place Market Order (Buy/Sell)")
+        print("5. 📈 Place Limit Order (Buy/Sell)")
+        print("6. 🛡️  Place Stop-Limit Order (Advanced)")
+        print("7. 🔍 Check Order Status")
+        print("8. ❌ Exit")
         print("=" * 50)
 
     def get_user_input(self , prompt , input_type = str , validation = None):
@@ -195,7 +197,6 @@ class TradingCLI:
             lambda x: x.upper() in ['BUY', 'SELL']
         ).upper()
 
-
     def check_order_status(self):
         """Check order status"""
         print("\n🔍 Check Order Status")
@@ -315,6 +316,41 @@ class TradingCLI:
         else:
             print("❌ Order cancelled")
 
+    def view_portfolio_summary(self):
+        """Display detailed portfolio summary"""
+        print("\n📊 Portfolio Summary")
+        print("=" * 50)
+
+        portfolio = self.bot.get_portfolio_summary()
+        if not portfolio:
+            print("❌ Failed to retrieve portfolio summary")
+            return
+
+        print("💼 Account Overview:")
+        print(f"   Total Balance: ${portfolio['total_wallet_balance']:,.2f}")
+        print(f"   Available: ${portfolio['available_balance']:,.2f}")
+        print(f"   Unrealized PnL: ${portfolio['total_unrealized_pnl']:+,.2f}")
+
+        print("\n💰 Asset Balances:")
+        if portfolio['balances']:
+            for asset, balance in portfolio['balances'].items():
+                print(f"   {asset}: {balance:,.6f}")
+        else:
+            print("   No assets with positive balance")
+
+
+        print("\n📈 Active Positions:")
+        if portfolio['positions']:
+            for pos in portfolio['positions']:
+                side = "LONG" if pos['size'] > 0 else "SHORT"
+                print(f"   {pos['symbol']} - {side}")
+                print(f"     Size: {abs(pos['size']):.6f}")
+                print(f"     Entry: ${pos['entry_price']:,.2f}")
+                print(f"     Mark: ${pos['mark_price']:,.2f}")
+                print(f"     PnL: ${pos['pnl']:+,.2f} ({pos['percentage']:+.2f}%)")
+        else:
+            print("   No active positions")
+
     def run(self):
         """Main CLI loop"""
         print("🚀 Welcome to Crypto Trading Bot!")
@@ -324,24 +360,26 @@ class TradingCLI:
             try:
                 self.display_menu()
                 choice = self.get_user_input(
-                    "Select an option (1-7): ",
+                    "Select an option (1-8): ",
                     str,
-                    lambda x: x in ['1', '2', '3', '4', '5', '6', '7']
+                    lambda x: x in ['1', '2', '3', '4', '5', '6', '7' , '8']
                 )
                 if choice == '1':
                     self.view_balance()
                 elif choice == '2':
-                    self.get_symbol_price()
+                    self.view_portfolio_summary()
                 elif choice == '3':
-                    self.place_market_order()
+                    self.get_symbol_price()
                 elif choice == '4':
-                    self.place_limit_order()
+                    self.place_market_order()
                 elif choice == '5':
-                    self.check_order_status()
+                    self.place_limit_order()
                 elif choice == '6':
                     self.check_order_status()
-
                 elif choice == '7':
+                    self.check_order_status()
+
+                elif choice == '8':
                     print("👋 Thanks for using Trading Bot!")
                     break
 
