@@ -131,9 +131,57 @@ class BasicBot:
             self.logger.error(f"Failed to get order status: {str(e)}")
             return None
 
-"""
-for current testing 
-"""
-bot = BasicBot()
 
-balance = bot.get_account_balance()
+    def place_stop_limit_order(self, symbol, side, quantity, stop_price, limit_price):
+        """Place a stop-limit order"""
+        try:
+            self.logger.info(
+                f"Placing {side} stop-limit order: {quantity} {symbol} stop: {stop_price} limit: {limit_price}")
+
+            # Validate inputs
+            if not self._validate_order_inputs(symbol, side, quantity, limit_price):
+                return None
+
+            # Validate stop price
+            try:
+                stop_price = float(stop_price)
+                if stop_price <= 0:
+                    self.logger.error("Stop price must be positive")
+                    return False
+            except ValueError:
+                self.logger.error("Invalid stop price format")
+                return False
+
+            # Place the order
+            order = self.client.futures_create_order(
+                symbol=symbol,
+                side=side,
+                type='STOP',
+                timeInForce='GTC',
+                quantity=quantity,
+                price=limit_price,
+                stopPrice=stop_price
+            )
+
+            self.logger.info(f"Stop-limit order placed successfully: {order['orderId']}")
+            return order
+
+        except BinanceAPIException as e:
+            self.logger.error(f"Failed to place stop-limit order: {str(e)}")
+            return None
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

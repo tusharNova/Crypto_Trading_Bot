@@ -15,8 +15,9 @@ class TradingCLI:
         print("2. 📊 Get Symbol Price")
         print("3. 🛒 Place Market Order (Buy/Sell)")
         print("4. 📈 Place Limit Order (Buy/Sell)")
-        print("5. 🔍 Check Order Status")
-        print("6. ❌ Exit")
+        print("5. 🛡️  Place Stop-Limit Order (Advanced)")
+        print("6. 🔍 Check Order Status")
+        print("7. ❌ Exit")
         print("=" * 50)
 
     def get_user_input(self , prompt , input_type = str , validation = None):
@@ -40,7 +41,6 @@ class TradingCLI:
             except KeyboardInterrupt:
                 print("\n👋 Goodbye!")
                 sys.exit(0)
-
 
     def view_balance(self):
         print("\n📊 Getting Account Balance...")
@@ -195,6 +195,7 @@ class TradingCLI:
             lambda x: x.upper() in ['BUY', 'SELL']
         ).upper()
 
+
     def check_order_status(self):
         """Check order status"""
         print("\n🔍 Check Order Status")
@@ -224,6 +225,96 @@ class TradingCLI:
         else:
             print("❌ Failed to get order status")
 
+    def place_stop_limit_order(self):
+        """Place a stop-limit order"""
+        print("\n🛡️  Place Stop-Limit Order")
+        print("ℹ️  Stop-limit combines stop-loss protection with price control")
+        print("   • Stop Price: Triggers the order when market reaches this level")
+        print("   • Limit Price: Maximum/minimum price you're willing to pay/receive")
+
+        # Get order details
+        symbol = self.get_user_input(
+            "Enter symbol (e.g., BTCUSDT): ",
+            str,
+            lambda x: len(x) >= 6
+        ).upper()
+
+        # Get current price for reference
+        current_price = self.bot.get_symbol_price(symbol)
+        if current_price:
+            print(f"📊 Current {symbol} price: ${current_price:,.2f}")
+
+        side = self.get_user_input(
+            "Enter order side (BUY/SELL): ",
+            str,
+            lambda x: x.upper() in ['BUY', 'SELL']
+        ).upper()
+
+        quantity = self.get_user_input(
+            "Enter quantity: ",
+            float,
+            lambda x: x > 0
+        )
+
+        # Explain stop-limit logic based on side
+        if side == 'BUY':
+            print("💡 For BUY orders:")
+            print("   Stop Price: Should be ABOVE current price")
+            print("   Limit Price: Maximum you'll pay (usually above stop price)")
+        else:
+            print("💡 For SELL orders:")
+            print("   Stop Price: Should be BELOW current price")
+            print("   Limit Price: Minimum you'll accept (usually below stop price)")
+
+        stop_price = self.get_user_input(
+            "Enter stop price: $",
+            float,
+            lambda x: x > 0
+        )
+
+        limit_price = self.get_user_input(
+            "Enter limit price: $",
+            float,
+            lambda x: x > 0
+        )
+
+        # Show analysis
+        if current_price:
+            stop_diff = ((stop_price - current_price) / current_price) * 100
+            limit_diff = ((limit_price - current_price) / current_price) * 100
+            print(f"📊 Stop vs current: {stop_diff:+.2f}%")
+            print(f"📊 Limit vs current: {limit_diff:+.2f}%")
+
+        # Confirmation
+        print(f"\n📝 Stop-Limit Order Summary:")
+        print(f"   Symbol: {symbol}")
+        print(f"   Side: {side}")
+        print(f"   Type: STOP-LIMIT")
+        print(f"   Quantity: {quantity}")
+        print(f"   Stop Price: ${stop_price}")
+        print(f"   Limit Price: ${limit_price}")
+        print(f"   Max Cost: ${limit_price * quantity:,.2f}")
+
+        confirm = self.get_user_input(
+            "\n⚠️  Confirm stop-limit order? (yes/no): ",
+            str,
+            lambda x: x.lower() in ['yes', 'no', 'y', 'n']
+        ).lower()
+
+        if confirm in ['yes', 'y']:
+            print("🚀 Placing stop-limit order...")
+            order = self.bot.place_stop_limit_order(symbol, side, quantity, stop_price, limit_price)
+
+            if order:
+                print("✅ Stop-limit order placed successfully!")
+                print(f"   Order ID: {order['orderId']}")
+                print(f"   Status: {order['status']}")
+                print("ℹ️  Order will activate when market hits stop price")
+            else:
+                print("❌ Failed to place order. Check logs for details.")
+        else:
+            print("❌ Order cancelled")
+
     def run(self):
         """Main CLI loop"""
         print("🚀 Welcome to Crypto Trading Bot!")
@@ -233,9 +324,9 @@ class TradingCLI:
             try:
                 self.display_menu()
                 choice = self.get_user_input(
-                    "Select an option (1-6): ",
+                    "Select an option (1-7): ",
                     str,
-                    lambda x: x in ['1', '2', '3', '4', '5', '6']
+                    lambda x: x in ['1', '2', '3', '4', '5', '6', '7']
                 )
                 if choice == '1':
                     self.view_balance()
@@ -247,8 +338,10 @@ class TradingCLI:
                     self.place_limit_order()
                 elif choice == '5':
                     self.check_order_status()
-
                 elif choice == '6':
+                    self.check_order_status()
+
+                elif choice == '7':
                     print("👋 Thanks for using Trading Bot!")
                     break
 
