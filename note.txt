@@ -1,0 +1,1 @@
+Add .env file with API_Key ='Your_api_key' and API_Secret = 'your_api_secret'
