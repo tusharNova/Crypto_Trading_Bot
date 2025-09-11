@@ -169,47 +169,81 @@ class BasicBot:
             self.logger.error(f"Failed to place stop-limit order: {str(e)}")
             return None
 
-    # Add to BasicBot class in bot.py
-
     def get_portfolio_summary(self):
-        """Get detailed portfolio summary"""
+        """Get simplified portfolio summary"""
         try:
-            # Get account info
-            account = self.client.futures_account()
+            # Get basic account info that we know works
             balance = self.client.futures_account_balance()
 
-            # Get positions
-            positions = self.client.futures_position_information()
+            # Try to get account info, but handle if some fields are missing
+            try:
+                account = self.client.futures_account()
+                self.logger.info(f"Account response keys: {list(account.keys())}")
+            except Exception as e:
+                self.logger.warning(f"Could not get full account info: {str(e)}")
+                account = {}
 
+            # Try to get positions
+            try:
+                positions = self.client.futures_position_information()
+            except Exception as e:
+                self.logger.warning(f"Could not get positions: {str(e)}")
+                positions = []
+
+            # Build portfolio with safe defaults
             portfolio = {
-                'total_wallet_balance': float(account['totalWalletBalance']),
-                'total_unrealized_pnl': float(account['totalUnrealizedPnL']),
-                'available_balance': float(account['availableBalance']),
+                'total_wallet_balance': 0,
+                'total_unrealized_pnl': 0,
+                'available_balance': 0,
                 'balances': {},
                 'positions': []
             }
 
-            # Process balances
+            # Process balances (this should always work)
+            total_balance = 0
             for asset in balance:
-                if float(asset['balance']) > 0:
-                    portfolio['balances'][asset['asset']] = float(asset['balance'])
+                asset_balance = float(asset['balance'])
+                if asset_balance > 0:
+                    portfolio['balances'][asset['asset']] = asset_balance
+                    total_balance += asset_balance  # Approximate total
 
-            # Process positions
+            portfolio['total_wallet_balance'] = total_balance
+
+            # Try to get more detailed info if available
+            if account:
+                # Check what keys are actually available and use them safely
+                for key in ['totalWalletBalance', 'totalMarginBalance', 'totalInitialMargin']:
+                    if key in account:
+                        portfolio['total_wallet_balance'] = float(account[key])
+                        break
+
+                for key in ['totalUnrealizedPnL', 'totalUnrealizedProfit', 'totalCrossUnPnl']:
+                    if key in account:
+                        portfolio['total_unrealized_pnl'] = float(account[key])
+                        break
+
+                for key in ['availableBalance', 'maxWithdrawAmount']:
+                    if key in account:
+                        portfolio['available_balance'] = float(account[key])
+                        break
+
+            # Process positions if available
             for position in positions:
-                if float(position['positionAmt']) != 0:
+                position_amt = float(position.get('positionAmt', 0))
+                if position_amt != 0:
                     portfolio['positions'].append({
-                        'symbol': position['symbol'],
-                        'size': float(position['positionAmt']),
-                        'entry_price': float(position['entryPrice']),
-                        'mark_price': float(position['markPrice']),
-                        'pnl': float(position['unRealizedPnL']),
-                        'percentage': float(position['percentage'])
+                        'symbol': position.get('symbol', 'N/A'),
+                        'size': position_amt,
+                        'entry_price': float(position.get('entryPrice', 0)),
+                        'mark_price': float(position.get('markPrice', 0)),
+                        'pnl': float(position.get('unRealizedPnL', 0)),
+                        'percentage': float(position.get('percentage', 0))
                     })
 
-            self.logger.info("Retrieved portfolio summary")
+            self.logger.info("Retrieved portfolio summary successfully")
             return portfolio
 
-        except BinanceAPIException as e:
+        except Exception as e:
             self.logger.error(f"Failed to get portfolio summary: {str(e)}")
             return None
 
@@ -218,6 +252,10 @@ class BasicBot:
 
 
 
+
+if __name__ == '__main__':
+    b = BasicBot()
+    print(b.get_portfolio_summary())
 
 
 
